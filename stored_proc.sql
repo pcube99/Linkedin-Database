@@ -1,0 +1,276 @@
+set search_path to mylinkedin;
+drop function profile_view;
+CREATE or REPLACE FUNCTION profile_view(start_date date, end_date date) RETURNS 
+table(
+	uid integer,
+	username varchar(30),
+	frdid integer,
+	friendname varchar(30)
+) AS $BODY$ 
+DECLARE  
+	r record;
+	ri record;
+	ans integer;
+	maxi integer;
+	mm real;
+	dd real;
+BEGIN  
+	ans=0;
+	for r in select * from (select to_char(visit_time,'YYYY-MM-DD') as pdate,user_id,visiter_id from "views") as r1 join myuser on r1.user_id=myuser.user_id
+	LOOP   
+	if r.pdate::date >=  start_date::date and r.pdate::date <=  end_date::date then
+	raise notice 'Name: %', r.pdate;  
+	uid := r.user_id;
+	username := r.user_name;
+	frdid := r.visiter_id;
+	for ri in select user_name from myuser where user_id=r.visiter_id
+	loop
+	friendname := ri.user_name;
+	end loop;
+	return next;
+	end if;
+	END LOOP; 
+END; $BODY$ LANGUAGE plpgsql; 
+
+SELECT * FROM profile_view('2018-10-21','2018-10-25');
+
+
+
+
+set search_path to mylinkedin_test;
+CREATE or REPLACE FUNCTION friend_recommend(use_id integer) RETURNS 
+table(
+	friendid integer,
+	friendname varchar(30)
+)
+AS $BODY$ 
+DECLARE 
+	r record;
+	ri record;
+	ti record;
+	ans integer;
+	maxi integer;
+BEGIN  
+	ans=0;
+	for r in select friend_id from friends where user_id=use_id
+	LOOP   
+	for ri in select friend_id,user_name from (select friend_id from friends where user_id=r.friend_id) as r1 join myuser on r1.friend_id=myuser.user_id
+	loop
+	if (ri.friend_id <> use_id) then
+		if (ri.friend_id not in (select friend_id from friends where user_id=use_id ) ) then
+		friendid := ri.friend_id;
+		friendname := ri.user_name;
+		return next;
+		end if;
+	end if;
+	end loop;
+	end loop;
+	
+	for ti in select * from (select university_name from myuser where user_id=use_id) as r1 join myuser on(myuser.university_name = r1.university_name)
+	loop
+	friendid := ti.user_id;
+	friendname := ti.user_name;
+	return next;
+	end loop;
+	
+	
+END; $BODY$ LANGUAGE plpgsql; 
+SELECT distinct * FROM friend_recommend(3) order by friendid asc;
+
+set search_path to mylinkedin;
+CREATE or REPLACE FUNCTION job_recommend(use_id integer) RETURNS 
+table(
+	jid integer,
+	jposition varchar(30),
+	cname varchar(50),
+	pskill varchar(30),
+	jlocation varchar(30),
+	salary float
+) AS $BODY$ 
+DECLARE 
+	r record;
+	ri record;
+	ans integer;
+	maxi integer;
+	ty record;
+	ti record;
+BEGIN  
+	ans=0;
+	for ri in select * from employment where user_id=use_id and end_date is null
+	loop
+	end loop;
+	for r in select avg(feedback),company_id from employment where company_id not in (21) group by company_id 
+	loop
+		if(r.avg > ri.feedback) then
+		raise notice 'Name %', r.company_id;
+		for ti in select * from (select * from (select * from job where company_id=r.company_id) as pp natural join company) as op join skill 
+		on skill.skill_id=op.primaryskill_required and op.primaryskill_required in (select skill_id from user_skill where user_id=use_id)
+		loop
+		raise notice 'N %', ti.job_id;
+		jid := ti.job_id;
+		jposition := ti.job_position;
+		cname := ti.company_name;
+		pskill := ti.skill_name;
+		jlocation := ti.job_location;
+		salary := ti.salary_offered;
+		
+		return next;
+		end loop;
+		end if;
+	
+	end loop;
+	if use_id not in (select user_id from employment) as r1 then
+		for ty in select * from (select * from (select * from job) as r1 join company on(company.company_id=r1.company_id)) as r2 join skill on(skill.skill_id=r2.primaryskill_required)
+		loop
+		raise notice 'Niii %', ty.job_id;
+		jid := ty.job_id;
+		jposition := ty.job_position;
+		cname := ty.company_name;
+		pskill := ty.skill_name;
+		jlocation := ty.job_location;
+		salary := ty.salary_offered;
+		return next;
+		end loop;
+	
+	end if;
+END; $BODY$ LANGUAGE plpgsql; 
+
+SELECT * FROM job_recommend(14) order by jid asc;
+
+set search_path to mylinkedin;
+drop function user_active_group;
+CREATE or REPLACE FUNCTION user_active_group(use_id integer) RETURNS 
+table (gid integer,
+	gname text,
+	hashta text,
+	descri text) AS $BODY$ 
+DECLARE 
+	r record;
+	ri record;
+	ans integer;
+	maxi integer;
+BEGIN  
+	ans=0;
+	for r in select group_id,group_name,hashtag,group_description from (select * from user_group where user_id=5)as df natural join "group"
+	loop
+	gid := r.group_id;
+	gname := r.group_name;
+	hashta := r.hashtag;
+	descri := r.group_description;
+	raise notice 'Name %',r.group_name;
+	return next;
+	end loop;
+	
+END; $BODY$ LANGUAGE plpgsql; 
+SELECT * FROM user_active_group(5);
+
+set search_path to mylinkedin;
+drop function previous_jobs;
+CREATE or REPLACE FUNCTION previous_jobs(use_id integer) RETURNS 
+table(
+	cname varchar(30),
+	jobposition varchar(30),
+	jobskill varchar(30),
+	joblocation varchar(30),
+	selfemp varchar(4),
+	jobsalary float,
+	jobrating float,
+	jobstartdate date,
+	jobenddate date
+) AS $BODY$ 
+DECLARE 
+	r record;
+	ri record;
+	ans integer;
+	maxi integer;
+BEGIN  
+	ans=0;
+	for r in select * from (select * from employment where end_date is not null and user_id =use_id) as r1 natural join company
+	loop
+	raise notice 'Name %',r;
+	cname := r.company_name;
+	jobposition := r.position;
+	jobskill := r.primary_skill;
+	joblocation := r.location;
+	selfemp := r.self_employed;
+	jobsalary := r.salary;
+	jobrating := r.feedback;
+	jobstartdate := r.start_date;
+	jobenddate := r.end_date;
+	return next;
+	end loop; 
+END; $BODY$ LANGUAGE plpgsql; 
+
+SELECT * FROM previous_jobs(5);
+
+set search_path to mylinkedin;
+drop function user_profile_security;
+CREATE or REPLACE FUNCTION user_profile_security(use_id integer) RETURNS 
+table(
+	uid integer,
+	friendname varchar(20)
+) AS $BODY$ 
+DECLARE 
+	r record;
+	ri record;
+	ans integer;
+	maxi integer;
+BEGIN  
+	ans=0;
+	for r in select * from myuser where user_id= use_id
+	loop
+		if r.security = 'public' then
+			for ri in select * from (select * from friends where user_id = use_id) as r1 join myuser on r1.friend_id=myuser.user_id
+			loop
+			uid := ri.friend_id;
+			friendname := ri.user_name;
+			return next;
+			end loop;
+		else
+			for ri in select * from (select * from friends where user_id = use_id and visible=1) as r1 join myuser on r1.friend_id=myuser.user_id
+			loop
+			uid := ri.friend_id;
+			friendname := ri.user_name;
+			return next;
+			end loop;
+		end if;
+	end loop; 
+END; $BODY$ LANGUAGE plpgsql; 
+
+SELECT * FROM user_profile_security(20);
+set search_path to mylinkedin;
+drop function profile_view;
+CREATE or REPLACE FUNCTION profile_view(start_date date, end_date date) RETURNS 
+table(
+	uid integer,
+	username varchar(30),
+	frdid integer,
+	friendname varchar(30)
+) AS $BODY$ 
+DECLARE  
+	r record;
+	ri record;
+	ans integer;
+	maxi integer;
+	mm real;
+	dd real;
+BEGIN  
+	ans=0;
+	for r in select * from (select to_char(visit_time,'YYYY-MM-DD') as pdate,user_id,visiter_id from "views") as r1 join myuser on r1.user_id=myuser.user_id
+	LOOP   
+	if r.pdate::date >=  start_date::date and r.pdate::date <=  end_date::date then
+	raise notice 'Name: %', r.pdate;  
+	uid := r.user_id;
+	username := r.user_name;
+	frdid := r.visiter_id;
+	for ri in select user_name from myuser where user_id=r.visiter_id
+	loop
+	friendname := ri.user_name;
+	end loop;
+	return next;
+	end if;
+	END LOOP; 
+END; $BODY$ LANGUAGE plpgsql; 
+
+SELECT * FROM profile_view('2018-10-22','2018-10-25');
+

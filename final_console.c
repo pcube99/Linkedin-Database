@@ -1,0 +1,188 @@
+/*
+To Compile: gcc final_console.c -o console -I/usr/include/postgresql -lpq -std=c99
+To run: ./console
+*/
+ 
+#include <stdio.h>
+#include <stdlib.h>
+#include <libpq-fe.h>
+#include <string.h>
+ 
+int main()
+{
+    PGconn *conn;
+    PGresult *res;
+ 
+    int rec_count;
+    int row;
+    int col;
+ 
+    conn = PQconnectdb("host=10.100.71.21 port=5432 user=201601141 password=PANKIL dbname=201601141");
+    if (PQstatus(conn) == CONNECTION_BAD)
+    {
+        puts("We were unable to connect to the database");
+        exit(0);
+    }
+ 
+    char *string = (char *)malloc(1000 * sizeof(char));
+    while (1)
+    {
+        res = PQexec(conn, "set search_path to \"mylinkedin\";");
+ 
+        printf("1. Enter 1 for Query\n");
+        printf("2. Enter 2 for Update opertaions\n");
+        printf("3. Enter 3 to show user_id and user_name from myuser table\n");
+        printf("4. Enter 4 to execute Currently self employed user in mylinkedin database\n");
+        printf("5. Enter 5 to execute Currently working users in mylinkedin database\n");
+        printf("6. Enter anything else to exit\n");
+        int type;
+        scanf("%d\n", &type);
+ 
+        fflush(stdout);
+        if (type == 1)
+        {
+            scanf("%[^\n]s", string);
+            res = PQexec(conn, string);
+            if (PQresultStatus(res) != PGRES_TUPLES_OK)
+            {
+                printf("%s", PQresultErrorMessage(res));
+                continue;
+            }
+            rec_count = PQntuples(res);
+            printf("We received %d records.\n", rec_count);
+            puts("==========================");
+ 
+            int col_count = PQnfields(res);
+            for (col = 0; col < col_count; col++)
+            {
+                printf("%s\t", PQfname(res, col));
+            }
+            puts("");
+ 
+            for (row = 0; row < rec_count; row++)
+            {
+                for (col = 0; col < col_count; col++)
+                {
+                    printf("%s\t", PQgetvalue(res, row, col));
+                }
+                puts("");
+            }
+            puts("==========================");
+        }
+        else if (type == 2)
+        {
+            scanf("%[^\n]s", string);
+            res = PQexec(conn, string);
+ 
+            if (PQresultStatus(res) != PGRES_COMMAND_OK)
+            {
+                printf("%s", PQresultErrorMessage(res));
+                continue;
+            }
+            else
+            {
+                printf("Update query executed succesfully\n");
+            }
+        }
+        else if(type == 3)
+        {
+            string="select user_id,user_name from myuser order by user_id";
+            res = PQexec(conn, string);
+            if (PQresultStatus(res) != PGRES_TUPLES_OK)
+            {
+                printf("%s", PQresultErrorMessage(res));
+                continue;
+            }
+            rec_count = PQntuples(res);
+            printf("We received %d records.\n", rec_count);
+            puts("==========================");
+ 
+            int col_count = PQnfields(res);
+            for (col = 0; col < col_count; col++)
+            {
+                printf("%s\t", PQfname(res, col));
+            }
+            puts("");
+ 
+            for (row = 0; row < rec_count; row++)
+            {
+                for (col = 0; col < col_count; col++)
+                {
+                    printf("%s\t", PQgetvalue(res, row, col));
+                }
+                puts("");
+            }
+            puts("==========================");
+           
+        }
+        else if(type == 4)
+        {
+            string="select user_id,user_name,primary_skill from (select * from employment where self_employed='yes') as r1 natural join myuser where end_date is null";
+            res = PQexec(conn, string);
+            if (PQresultStatus(res) != PGRES_TUPLES_OK)
+            {
+                printf("%s", PQresultErrorMessage(res));
+                continue;
+            }
+            rec_count = PQntuples(res);
+            printf("We received %d records.\n", rec_count);
+            puts("==========================");
+ 
+            int col_count = PQnfields(res);
+            for (col = 0; col < col_count; col++)
+            {
+                printf("%s\t", PQfname(res, col));
+            }
+            puts("");
+ 
+            for (row = 0; row < rec_count; row++)
+            {
+                for (col = 0; col < col_count; col++)
+                {
+                    printf("%s\t", PQgetvalue(res, row, col));
+                }
+                puts("");
+            }
+            puts("==========================");
+           
+        }
+        else if(type == 5)
+        {
+            string="select user_id,user_name from (select user_id from employment where end_date is null ) as r1 natural join myuser";
+            res = PQexec(conn, string);
+            if (PQresultStatus(res) != PGRES_TUPLES_OK)
+            {
+                printf("%s", PQresultErrorMessage(res));
+                continue;
+            }
+            rec_count = PQntuples(res);
+            printf("We received %d records.\n", rec_count);
+            puts("==========================");
+ 
+            int col_count = PQnfields(res);
+            for (col = 0; col < col_count; col++)
+            {
+                printf("%s\t", PQfname(res, col));
+            }
+            puts("");
+ 
+            for (row = 0; row < rec_count; row++)
+            {
+                for (col = 0; col < col_count; col++)
+                {
+                    printf("%s\t", PQgetvalue(res, row, col));
+                }
+                puts("");
+            }
+            puts("==========================");
+           
+        }
+        else
+        {
+            PQfinish(conn);
+            printf("PQfinish(conn) done\n");
+            break;
+        }
+    }
+    return 0;
+}

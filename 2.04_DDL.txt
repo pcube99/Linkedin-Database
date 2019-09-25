@@ -1,0 +1,134 @@
+create schema mylinkedin_test;
+set search_path to mylinkedin_test;
+
+create table myuser(
+	user_id integer primary key, 
+	user_name varchar(20) not null, 
+	city varchar(20) not null, 
+	birthday date, 
+	school_percentage float check(school_percentage > 0 and school_percentage < 100), 
+	school_name varchar(50), 
+	university_cpi float check(university_cpi > 0 and university_cpi <= 10), 
+	university_name varchar(50), email varchar(25) not null, 
+	gender char(5) not null check(gender in ('M','F','Other')), 
+	mobile_no varchar(10) , 
+	"security" varchar(10) not null check("security" in ('private', 'public')) ,
+	registration_time timestamp
+); 
+create domain date1 as date default NULL check (value <= now()) ; 
+create table certificates( 
+	user_id integer references myuser(user_id) on delete cascade on update cascade, 
+	certificate_earned varchar(60), 
+	issued_date date1 not null, 
+	issued_by varchar(50) not null, 
+	primary key(user_id, certificate_earned) 
+); 
+
+create table "group"( 
+	group_id integer primary key, 
+	hashtag varchar(30) not null unique, 
+	group_name varchar(30) not null unique, 
+	group_description varchar(60) 
+);
+
+create table post( 
+	post_id integer primary key,
+	"time" timestamp not null, 
+	description text not null, 
+	user_id integer references myuser(user_id) on delete cascade on update cascade, 
+	post_hashtag varchar(30) references "group"(hashtag) on delete cascade on update cascade 
+);
+
+create table "comment"( 
+	comment_id integer, 
+	post_id integer references post(post_id) on delete cascade on update cascade, 
+	commenter_id integer references myuser(user_id) on delete cascade on update cascade, 
+	comment_time timestamp not null, 
+	comment_description text,
+	primary key(comment_id, post_id)
+);
+
+create type like_type as enum('upvote','downvote'); 
+create table "like"( 
+	liker_id integer references myuser(user_id), 
+	post_id integer references post(post_id), 
+	liketype like_type not null, 
+	primary key(liker_id, post_id) 
+);
+
+create table user_group( 
+	user_id integer references myuser(user_id) on delete cascade on update cascade, 
+	group_id integer references "group"(group_id) on delete cascade on update cascade, 
+	primary key(user_id, group_id) 
+);
+
+create table skill( 
+	skill_id integer primary key,
+	skill_name varchar(30) not null unique
+); 
+
+create table user_skill( 
+	user_id integer references myuser(user_id) on delete cascade on update cascade, 
+	skill_id integer references skill(skill_id) on delete cascade on update cascade, 
+	primary key(user_id,skill_id) 
+);
+
+create table endorsement( 
+	user_id integer references myuser(user_id) on delete cascade on update cascade, 
+	friend_id integer references myuser(user_id) on delete cascade on update cascade , 
+	skill_id integer references skill(skill_id) on delete cascade on update cascade, 
+	primary key(user_id,friend_id, skill_id)
+);
+
+create table friends( 
+	user_id integer references myuser(user_id) on delete cascade on update cascade, 
+	friend_id integer references myuser(user_id) on delete cascade on update cascade, 
+	visible integer not null, 
+	primary key(user_id, friend_id) 
+);
+
+create table "views"( 
+	user_id integer references myuser(user_id) on delete cascade on update cascade, 
+	visiter_id integer references myuser(user_id) on delete cascade on update cascade, 
+	visit_time timestamp not null, 
+	primary key(user_id, visiter_id) 
+);
+
+create table company( 
+	company_id integer primary key, 
+	company_name varchar(50) not null, 
+	company_city varchar(20) not null 
+);
+
+create table job( 
+	job_id integer primary key, 
+	job_location varchar(40) not null, 
+	salary_offered float not null, 
+	job_position varchar(50) null, 
+	company_id integer references company(company_id) on delete cascade on update cascade, 
+	primaryskill_required integer references skill(skill_id) on delete cascade on update cascade, 
+	validity_date date not null, 
+	formstart_date date not null 
+);
+
+create table employment( 
+	user_id integer references myuser(user_id) on delete cascade on update cascade, 
+	salary float not null, 
+	start_date date not null, 
+	end_date date, 
+	company_id integer references company(company_id)on delete cascade on update cascade, 
+	"location" varchar(20) not null, 
+	"position" varchar(30) not null, 
+	primary_skill varchar(30) not null, 
+	self_employed varchar(5) not null, 
+	feedback float not null, 
+	primary key(user_id, company_id, start_date) 
+);
+
+create table chat(
+	user_id integer references myuser(user_id) on delete cascade on update cascade,
+	friend_id integer references myuser(user_id) on delete cascade on update cascade,
+	message text,
+	message_time timestamp,
+	primary key(user_id, message_time)
+);

@@ -1,0 +1,86 @@
+1) Unemployed users in mylinkedin database
+selectuser_name ,user_id from  (select user_id from myuser except select user_id from employment)as t natural join myuser;
+
+2) Highest rated company in mylinkedin database
+select company_name,company_id,rating from (select * from(select company_id,avg(feedback) as rating from employment group by company_id) as t
+where rating in(
+select max(rating) from (select company_id,avg(feedback) as rating from employment  where company_id <> 21 group by company_id order by rating desc)as fi )) as sd natural join company;
+
+3) Most trending hashtag in mylinkedin database
+selectpost_hashtag ,hashtag_no from (select * from( select post_hashtag,count(post_hashtag) as hashtag_no from post group by post_hashtag)as t where hashtag_no in (
+select max(hashtag_no) from ( select post_hashtag,count(post_hashtag) as hashtag_no from post group by post_hashtag) as fi)) as sd;
+
+4) Currently self employed user in mylinkedin database
+select user_id,user_name,primary_skill from (select * from employment where self_employed='yes') as r1 natural join myuser where end_date is null
+
+5) Top five users with most connections
+select r.user_id,user_name,connections from (select user_id,count(user_id) as connections from friends
+group by user_id
+) as r join myuser on myuser.user_id=r.user_id order by connections desc 
+limit 5
+
+6) Groups with most users in it
+select group_name, group_id, hashtag, count as no_of_users from(
+select * from (
+select group_id,count(user_id) from (select user_id , group_id from user_group ) as x 
+group by group_id
+order by group_id) as z
+where count in(
+select max(count) from (select group_id,count(user_id) from (select user_id , group_id from user_group ) as x 
+group by group_id
+order by group_id) as xy)) as j natural join "group";
+
+7) Users who knows machine learning
+select user_id, user_name from (
+select * from user_skill
+where skill_id = 9) as c natural join myuser;
+
+8) Company with most job offering
+select company_id, company_name, count as offering from(
+select * from (
+select company_id, count(job_id) from job
+group by company_id
+order by count DESC ) as z
+where count in(
+select max(count) from (select company_id, count(job_id) from job
+group by company_id
+order by count DESC) as xy)) as xyz natural join company
+order by company_id;
+
+9) Most skilled user in mylinkedin database
+select user_name,user_id,skill_n from (select * from(select user_id,count(user_id) as skill_n from user_skill group by user_id) as fi 
+where skill_n in(
+select  max(skill_no)
+from ( select user_id,count(user_id) as skill_no from user_skill group by user_id) as t)) as sd natural join myuser;
+
+10) Most endorsed user in database
+select user_name,friend_id,endorse_n from (select * from(select friend_id,count(user_id) as endorse_n from endorsement group by friend_id) as fi 
+where endorse_n in(
+select max(endorse_no)
+from ( select friend_id,count(user_id) as endorse_no from endorsement group by friend_id) as t)) as sd join myuser on(myuser.user_id=sd.friend_id);
+
+11) Most liked post among the users
+select user_id,user_name,post_id,post_hashtag,description from(
+select user_id,post_id,post_hashtag,description from(
+select distinct post_id,no_of_upvote from (select * from(select post_id,count(liker_id) as no_of_upvote  from "like" where liketype='upvote' group by post_id) as fi 
+where no_of_upvote in(
+select  max(no_of_upvote)
+from ( select post_id,count(liker_id) as no_of_upvote from "like" where liketype ='upvote' group by post_id) as t)) as sd natural join myuser )as pp natural join post) as lo natural join myuser;
+
+12) Most used skill in current jobs
+select * from (select primary_skill,count(user_id) as deman from (select * from employment where end_date is null) as dd group by primary_skill) as df where deman in(
+select max(demand) from(
+select primary_skill,count(user_id) as demand from (select * from employment where end_date is null)as dd group by primary_skill) as po);
+
+13) Users which are from 'DAIICT' university
+select user_id,user_name,university_name from myuser where university_name='DAIICT';
+
+14) Users who are from same university ('NIRMA') and works in same company('Fintech')
+select user_id,user_name ,university_name,company_name,location,primary_skill,position,salary from (select * from (select user_id,user_name,university_name from myuser where university_name='NIRMA' )as t 
+natural join employment where end_date is NULL) as sd natural join company where company_name ='Fintech';
+
+15) Most demanded skill in new job opportunity
+select skill_id,skill_name,deman as demand from (select * from (select primaryskill_required,count(job_id) as deman from job group by primaryskill_required)
+as gf where deman in(
+select max(deman) from(
+select primaryskill_required,count(job_id) as deman from job group by primaryskill_required) as po) ) as gh join skill on(gh.primaryskill_required=skill.skill_id);
